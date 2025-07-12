@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  user-service:
+    build: ./user-service
+    ports:
+      - "3001:3001"
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/users_db
+      JWT_SECRET: JWT_EXPIRES_IN
+      JWT_EXPIRES_IN: 1h
+    depends_on:
+      - mongodb
+    volumes:
+      - ./user-service:/app
+      - /app/node_modules
+
+  mongodb:
+    image: mongo:4.4 # Using a specific stable version of MongoDB
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db # Persist data
+
+volumes:
+  mongodb_data:
