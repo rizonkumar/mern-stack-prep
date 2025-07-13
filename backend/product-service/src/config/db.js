@@ -7,9 +7,8 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     dialect: process.env.DB_DIALECT,
-    logging: false, // Set to true to see SQL queries in console (useful for debugging)
+    logging: false,
     pool: {
-      // Connection pool options
       max: 5,
       min: 0,
       acquire: 30000,
