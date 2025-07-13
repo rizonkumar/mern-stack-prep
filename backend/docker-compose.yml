@@ -9,18 +9,47 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/users_db
       JWT_SECRET: JWT_EXPIRES_IN
       JWT_EXPIRES_IN: 1h
+      NODE_ENV: development
     depends_on:
       - mongodb
     volumes:
       - ./user-service:/app
       - /app/node_modules
 
+  product-service:
+    build: ./product-service
+    ports:
+      - "3002:3002"
+    environment:
+      DB_HOST: mysql_db
+      DB_USER: root
+      DB_PASSWORD: "Rizon11#"
+      DB_NAME: products_db
+      DB_DIALECT: mysql
+      NODE_ENV: development
+    depends_on:
+      - mysql_db
+    volumes:
+      - ./product-service:/app
+      - /app/node_modules
+
   mongodb:
-    image: mongo:4.4 # Using a specific stable version of MongoDB
+    image: mongo:4.4
     ports:
       - "27017:27017"
     volumes:
-      - mongodb_data:/data/db # Persist data
+      - mongodb_data:/data/db
+
+  mysql_db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "Rizon11#"
+      MYSQL_DATABASE: products_db
+    volumes:
+      - mysql_data:/var/lib/mysql
 
 volumes:
   mongodb_data:
+  mysql_data:
