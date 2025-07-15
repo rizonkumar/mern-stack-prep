@@ -26,7 +26,7 @@ services:
       NODE_ENV: ${NODE_ENV}
     depends_on:
       mysql_db:
-        condition: service_healthy # Wait for the healthcheck to pass
+        condition: service_healthy
     networks:
       - app-network
 
