@@ -1,9 +1,10 @@
 class CustomError extends Error {
-  constructor(message, statusCode) {
-    super(message); // Call the parent Error constructor
+  constructor(message, statusCode, errors = null) {
+    super(message);
     this.statusCode = statusCode;
-    this.status = `${statusCode}`.startsWith("4") ? "fail" : "error"; // E.g., 4xx is 'fail', 5xx is 'error'
-    this.isOperational = true; // Mark as an operational error (expected error), not a programming error
+    this.status = `${statusCode}`.startsWith("4") ? "fail" : "error";
+    this.isOperational = true;
+    this.errors = errors;
 
     Error.captureStackTrace(this, this.constructor);
   }

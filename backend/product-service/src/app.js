@@ -1,7 +1,8 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const { connectDB } = require("./config/db");
-const { notFound, errorHandler } = require("./middlewares/errorMiddleware");
+const productRoutes = require("./routes/productRoutes");
+const { notFound, errorHandler } = require("./middlewares/errorMiddleware.js");
 
 dotenv.config();
 
@@ -11,6 +12,8 @@ connectDB();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use("/api/products", productRoutes);
 
 app.get("/", (req, res) => {
   res.send("Product Service API is running...");

@@ -7,7 +7,7 @@ services:
       - "3001:3001"
     environment:
       MONGODB_URI: mongodb://mongodb:27017/users_db
-      JWT_SECRET: JWT_EXPIRES_IN
+      JWT_SECRET: RIZON_Rahi
       JWT_EXPIRES_IN: 1h
       NODE_ENV: development
     depends_on:
@@ -21,14 +21,14 @@ services:
     ports:
       - "3002:3002"
     environment:
-      DB_HOST: mysql_db
+      DB_HOST: host.docker.internal
       DB_USER: root
       DB_PASSWORD: "Rizon11#"
       DB_NAME: products_db
       DB_DIALECT: mysql
       NODE_ENV: development
     depends_on:
-      - mysql_db
+      - mongodb
     volumes:
       - ./product-service:/app
       - /app/node_modules
@@ -40,16 +40,5 @@ services:
     volumes:
       - mongodb_data:/data/db
 
-  mysql_db:
-    image: mysql:8.0
-    ports:
-      - "3306:3306"
-    environment:
-      MYSQL_ROOT_PASSWORD: "Rizon11#"
-      MYSQL_DATABASE: products_db
-    volumes:
-      - mysql_data:/var/lib/mysql
-
 volumes:
   mongodb_data:
-  mysql_data:

@@ -23,6 +23,7 @@ const connectDB = async () => {
     console.log(
       `MySQL Connected (Product Service): ${process.env.DB_HOST}/${process.env.DB_NAME}`
     );
+    await sequelize.sync({ alter: true });
   } catch (error) {
     console.error(`Error (Product Service - MySQL): ${error.message}`);
     console.error("Sequelize connection error:", error);
