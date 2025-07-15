@@ -4,12 +4,12 @@ services:
   user-service:
     build: ./user-service
     ports:
-      - "3001:3001"
+      - "${USER_SERVICE_PORT}:3001"
     environment:
       MONGODB_URI: mongodb://mongodb:27017/users_db
-      JWT_SECRET: RIZON_Rahi
-      JWT_EXPIRES_IN: 1h
-      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      NODE_ENV: ${NODE_ENV}
     depends_on:
       - mongodb
     volumes:
@@ -19,16 +19,16 @@ services:
   product-service:
     build: ./product-service
     ports:
-      - "3002:3002"
+      - "${PRODUCT_SERVICE_PORT}:3002"
     environment:
-      DB_HOST: host.docker.internal
-      DB_USER: root
-      DB_PASSWORD: "Rizon11#"
-      DB_NAME: products_db
+      DB_HOST: mysql_db
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
       DB_DIALECT: mysql
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV}
     depends_on:
-      - mongodb
+      - mysql_db
     volumes:
       - ./product-service:/app
       - /app/node_modules
@@ -40,5 +40,18 @@ services:
     volumes:
       - mongodb_data:/data/db
 
+  mysql_db:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+
 volumes:
   mongodb_data:
+  mysql_data:
