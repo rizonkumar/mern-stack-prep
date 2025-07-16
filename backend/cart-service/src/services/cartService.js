@@ -173,3 +173,195 @@ const getUserCart = async (userId) => {
 
   return cart;
 };
+
+/**
+ * Adds a product to the user's cart or updates its quantity if already present.
+ * @param {string} userId - The ID of the user.
+ * @param {string} productId - The ID of the product to add.
+ * @param {number} quantity - The quantity to add/set.
+ * @returns {object} - The updated or newly created cart item.
+ * @throws {CustomError} If product not found, inactive, or insufficient stock.
+ */
+
+const addItemToCart = async (userId, productId, quantity) => {
+  // 1. Get or create the user cart
+  const [userCart, created] = await Cart.findOrCreate({
+    where: { userId },
+  });
+
+  // 2. Get real time product details from product service (with redis caching)
+  const productDetails = await getProductDetailsFromService(productId);
+
+  // Initial check for product availability and validity
+
+  if (!productDetails.isActive) {
+    throw new CustomError(
+      `Product "${productDetails.name}" is not active and cannot be added.`,
+      400
+    );
+  }
+
+  // 3. Find if the item is already exists in the cart
+  let cartItem = await CartItem.findOne({
+    where: { cartId: userCart.id, productId: productId },
+  });
+
+  // 4. Determine new quantity and check stock
+  const finalQuantity = quantity; // Quantity to add for new item
+
+  if (cartItem) {
+    // If item exists, sum current quantitu with new quantity
+    finalQuantity = cartItem.quantity + quantity;
+  }
+
+  if (productDetails.quantity < finalQuantity) {
+    throw new CustomError(
+      `Insufficient stock for "${productDetails.name}". ` +
+        `Requested: ${finalQuantity}, available: ${productDetails.quantity}.` +
+        (cartItem ? ` You currently have ${cartItem.quantity} in cart.` : ""),
+      400
+    );
+  }
+
+  // 5. If item exists, update its quantity; otherwise, create a new cart item.
+  if (cartItem) {
+    cartItem.quantity = finalQuantity;
+    await cartItem.save();
+    console.log(
+      `[Cart Service] Updated quantity for product ${productId} in cart ${userCart.id} to ${finalQuantity}.`
+    );
+  } else {
+    cartItem = await CartItem.create({
+      cartId: userCart.id,
+      productId: productId,
+      quantity: finalQuantity,
+      productName: productDetails.name,
+      productPrice: productDetails.price,
+      productImageUrl: productDetails.imageUrl,
+    });
+    console.log(
+      `[Cart Service] Added product ${productId} to cart ${userCart.id} with quantity ${quantity}.`
+    );
+  }
+  return cartItem;
+};
+
+/**
+ * Updates the quantity of a specific item in the cart.
+ * If newQuantity is 0, the item is removed from the cart.
+ * @param {string} userId - The ID of the user.
+ * @param {string} productId - The ID of the product to update.
+ * @param {number} newQuantity - The new quantity for the item.
+ * @returns {object} - The updated cart item or a message if removed.
+ * @throws {CustomError} If cart or item not found, or insufficient stock.
+ */
+
+const updateCartItemQuantity = async (userId, productId, newQuantity) => {
+  const cart = await Cart.findOne({
+    where: { userId },
+  });
+
+  if (!cart) {
+    throw new CustomError("Cart not found for user", 404);
+  }
+
+  let cartItem = await CartItem.findOne({
+    where: { cartId: cart.id, productId: productId },
+  });
+
+  if (!cartItem) {
+    throw new CustomError("Product not found in cart", 404);
+  }
+
+  // If newQuantity is 0, remove the item from the cart
+  if (newQuantity === 0) {
+    await cartItem.destroy();
+    console.log(
+      `[Cart Service] Removed product ${productId} from cart ${cart.id} by setting quantity to 0.`
+    );
+
+    return { message: "Product removed from cart successfully." };
+  }
+
+  // Get real-time product details for stock check
+  const productDetails = await getProductDetailsFromService(productId);
+
+  // Check if new quantity exceed available stock
+  if (productDetails.quantity < newQuantity) {
+    throw new CustomError(
+      `Insufficient stock for "${productDetails.name}". Cannot set quantity to ${newQuantity}. Only ${productDetails.quantity} available.`,
+      400
+    );
+  }
+
+  // Update quanity and save to DB
+  cartItem.quantity = newQuantity;
+  await cartItem.save();
+  console.log(
+    `[Cart Service] Updated quantity for product ${productId} in cart ${cart.id} to ${newQuantity}.`
+  );
+
+  return cartItem;
+};
+
+/**
+ * Removes a specific item from the cart.
+ * @param {string} userId - The ID of the user.
+ * @param {string} productId - The ID of the product to remove.
+ * @returns {object} - A message confirming removal.
+ * @throws {CustomError} If cart or item not found.
+ */
+
+const removeCartItem = async (userId, productId) => {
+  const cart = await Cart.findOne({
+    where: { userId },
+  });
+
+  if (!cart) {
+    throw new CustomError("Cart not found for user", 404);
+  }
+
+  const cartItem = await CartItem.findOne({
+    where: { cartId: cart.id, productId: productId },
+  });
+
+  if (!cartItem) {
+    throw new CustomError("Product not found in cart", 404);
+  }
+
+  await cartItem.destroy();
+  console.log(
+    `[Cart Service] Removed product ${productId} from cart ${cart.id}.`
+  );
+  return { message: "Product removed from cart successfully." };
+};
+
+/**
+ * Clears all items from a user's cart.
+ * @param {string} userId - The ID of the user.
+ * @returns {object} - A message confirming the cart is cleared.
+ * @throws {CustomError} If cart not found.
+ */
+
+const clearCart = async (userId) => {
+  const cart = await Cart.findOne({
+    where: { userId },
+  });
+
+  if (!cart) {
+    throw new CustomError("Cart not found for user", 404);
+  }
+
+  await CartItem.destroy({ where: { cartId: cart.id } });
+  console.log(`[Cart Service] Cleared all items from cart ${cart.id}.`);
+
+  return { message: "Cart cleared successfully." };
+};
+
+module.exports = {
+  getUserCart,
+  addItemToCart,
+  updateCartItemQuantity,
+  removeCartItem,
+  clearCart,
+};
