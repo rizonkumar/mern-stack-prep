@@ -1,5 +1,6 @@
 const { Sequelize } = require("sequelize");
 const Redis = require("ioredis");
+const { Cart, CartItem } = require("../models");
 
 const sequelize = new Sequelize(
   process.env.PG_DATABASE,
@@ -21,7 +22,6 @@ const sequelize = new Sequelize(
 const redisClient = new Redis({
   host: process.env.REDIS_HOST,
   port: process.env.REDIS_PORT,
-  password: process.env.REDIS_PASSWORD,
 });
 
 redisClient.on("connect", () => console.log("Redis Connected (Cart Service)"));
@@ -36,8 +36,8 @@ const connectDB = async () => {
       `PostgreSQL Connected (Cart Service): ${process.env.PG_HOST}/${process.env.PG_DATABASE}`
     );
 
-    // await sequelize.sync({ alter: true }); // Will add this after defining models
-    // console.log("Cart table synchronized successfully.");
+    await sequelize.sync({ alter: true });
+    console.log("Cart and CartItem tables synchronized successfully.");
   } catch (error) {
     console.error(`Error (Cart Service - PostgreSQL): ${error.message}`);
     console.error("Sequelize PostgreSQL connection error:", error);
