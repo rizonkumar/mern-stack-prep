@@ -1,3 +1,4 @@
+version: "3.8"
 services:
   user-service:
     build: ./user-service
@@ -29,6 +30,30 @@ services:
         condition: service_healthy
     networks:
       - app-network
+
+  cart-service:
+    build: ./cart-service
+    ports:
+      - "${CART_SERVICE_PORT}:3003"
+    environment:
+      PG_HOST: postgresql_db
+      PG_USER: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+      PG_DATABASE: ${PG_DATABASE}
+      PG_DIALECT: ${PG_DIALECT}
+      REDIS_HOST: redis_cache
+      REDIS_PORT: ${REDIS_PORT}
+      NODE_ENV: ${NODE_ENV}
+    depends_on:
+      postgresql_db:
+        condition: service_healthy
+      redis_cache:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - ./cart-service:/app
+      - /app/node_modules
 
   mongodb:
     image: mongo:4.4
@@ -66,9 +91,43 @@ services:
       timeout: 5s
       retries: 5
 
+  postgresql_db:
+    image: postgres:14-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${PG_USER}
+      POSTGRES_PASSWORD: ${PG_PASSWORD}
+      POSTGRES_DB: ${PG_DATABASE}
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis_cache:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   mongodb_data:
   mysql_data:
+  postgresql_data:
+  redis_data:
 
 networks:
   app-network:
