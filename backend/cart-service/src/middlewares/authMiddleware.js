@@ -1,52 +1,61 @@
 const jwt = require("jsonwebtoken");
 const asyncHandler = require("express-async-handler");
-const User = require("../models/user");
 const CustomError = require("../utils/CustomError");
-
-/**
- * Middleware to protect routes by verifying JWT token.
- * It expects a token in the Authorization header: "Bearer TOKEN"
- */
+const axios = require("axios"); // For making internal HTTP calls
 
 const protect = asyncHandler(async (req, res, next) => {
   let token;
 
-  // Check if the Authorization header exists and starts with 'Bearer'
   if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
   ) {
     try {
-      // Get token from header
-      token = req.headers.authorization.split(" ")[1]; // Splits "Bearer TOKEN" into ["Bearer", "TOKEN"]
+      token = req.headers.authorization.split(" ")[1];
 
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const userValidationResponse = await axios.get(
+        `http://user-service:3001/api/users/validate-token`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      // Find user by ID from the token payload and attach to request
-      // .select('-password') ensures we don't bring the hashed password into req.user
-      req.user = await User.findById(decoded.id).select("-password");
+      req.user = userValidationResponse.data.data;
 
-      if (!req.user) {
+      if (!req.user || !req.user._id) {
         throw new CustomError(
-          "User not found. Token is valid but user does not exist.",
+          "User authentication failed. Invalid token or user data from auth service.",
           401
         );
       }
 
       next();
     } catch (error) {
-      console.error("Token verification failed:", error.message);
+      console.error(
+        "Token validation with User Service failed:",
+        error.message
+      );
 
-      if (error.name === "TokenExpiredError") {
-        throw new CustomError("Not authorized, token expired", 401);
-      } else if (error.name === "JsonWebTokenError") {
-        throw new CustomError(
-          "Not authorized, token failed (invalid token)",
-          401
-        );
+      if (error.response) {
+        if (error.response.status === 401) {
+          throw new CustomError(
+            "Not authorized, token invalid or expired",
+            401
+          );
+        } else {
+          throw new CustomError(
+            `Authentication service error: ${error.response.status} ${
+              error.response.data.message || error.message
+            }`,
+            error.response.status
+          );
+        }
+      } else if (error.request) {
+        throw new CustomError("Authentication service is unreachable", 503);
       } else {
-        throw new CustomError("Not authorized, token failed", 401);
+        throw new CustomError(`Authentication failed: ${error.message}`, 500);
       }
     }
   }
