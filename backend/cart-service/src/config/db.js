@@ -1,6 +1,5 @@
 const { Sequelize } = require("sequelize");
 const Redis = require("ioredis");
-const { Cart, CartItem } = require("../models");
 
 const sequelize = new Sequelize(
   process.env.PG_DATABASE,
