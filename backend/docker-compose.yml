@@ -1,37 +1,37 @@
-version: "3.8" # Docker Compose V2 and newer do not strictly require this, but it's harmless.
+version: "3.8"
 
 services:
   user-service:
     build: ./user-service
     ports:
-      - "${USER_SERVICE_PORT}:3001" # Host_Port:Container_Port
+      - "${USER_SERVICE_PORT}:3001"
     environment:
       MONGODB_URI: mongodb://mongodb:27017/users_db
-      JWT_SECRET: ${JWT_SECRET} # Ensure this is a strong, unique secret in your .env
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
       NODE_ENV: ${NODE_ENV}
     depends_on:
-      - mongodb # User Service needs MongoDB
+      - mongodb
     networks:
-      - app-network # All services are on this custom network
+      - app-network
 
   product-service:
     build: ./product-service
     ports:
       - "${PRODUCT_SERVICE_PORT}:3002"
     environment:
-      DB_HOST: mysql_db # Connects to the 'mysql_db' service within Docker network
+      DB_HOST: mysql_db
       DB_USER: root
-      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD} # Comes from your root .env
-      DB_NAME: ${MYSQL_DATABASE} # Comes from your root .env
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
       DB_DIALECT: mysql
       NODE_ENV: ${NODE_ENV}
-      KAFKA_BROKERS: kafka:9092 # How Product Service connects to Kafka
+      KAFKA_BROKERS: kafka:9092
     depends_on:
       mysql_db:
-        condition: service_healthy # Wait for MySQL to be ready
+        condition: service_healthy
       kafka:
-        condition: service_healthy # Wait for Kafka to be ready
+        condition: service_healthy
     networks:
       - app-network
 
@@ -40,49 +40,49 @@ services:
     ports:
       - "${CART_SERVICE_PORT}:3003"
     environment:
-      PG_HOST: postgresql_db # Connects to the 'postgresql_db' service
-      PG_USER: ${PG_USER} # Comes from your root .env
-      PG_PASSWORD: ${PG_PASSWORD} # Comes from your root .env
-      PG_DATABASE: ${PG_DATABASE} # Comes from your root .env
-      PG_DIALECT: postgres # Explicitly for Sequelize dialect
-      REDIS_HOST: redis_cache # Connects to the 'redis_cache' service
-      REDIS_PORT: ${REDIS_PORT} # Comes from your root .env
+      PG_HOST: postgresql_db
+      PG_USER: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+      PG_DATABASE: ${PG_DATABASE}
+      PG_DIALECT: postgres
+      REDIS_HOST: redis_cache
+      REDIS_PORT: ${REDIS_PORT}
       NODE_ENV: ${NODE_ENV}
-      KAFKA_BROKERS: kafka:9092 # How Cart Service connects to Kafka
+      KAFKA_BROKERS: kafka:9092
     depends_on:
       postgresql_db:
-        condition: service_healthy # Wait for Postgres to be ready
+        condition: service_healthy
       redis_cache:
-        condition: service_healthy # Wait for Redis to be ready
+        condition: service_healthy
       kafka:
-        condition: service_healthy # Wait for Kafka to be ready
+        condition: service_healthy
     networks:
       - app-network
-    volumes: # Mount local code for live reloading during development
+    volumes:
       - ./cart-service:/app
-      - /app/node_modules # Exclude node_modules from host mount to prevent issues
+      - /app/node_modules
 
-  mongodb: # MongoDB database for User Service
+  mongodb:
     image: mongo:4.4
     ports:
-      - "27017:27017" # Optional: Expose for local MongoDB tools like Compass
+      - "27017:27017"
     volumes:
-      - mongodb_data:/data/db # Persistent data storage
+      - mongodb_data:/data/db
     networks:
       - app-network
 
-  mysql_db: # MySQL database for Product Service
-    image: mysql:8.0 # Using a specific stable version
+  mysql_db:
+    image: mysql:8.0
     ports:
-      - "3306:3306" # Optional: Expose for local MySQL tools like Workbench
+      - "3306:3306"
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} # Root password for MySQL
-      MYSQL_DATABASE: ${MYSQL_DATABASE} # Database to create on startup
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
     volumes:
-      - mysql_data:/var/lib/mysql # Persistent data storage
+      - mysql_data:/var/lib/mysql
     networks:
       - app-network
-    healthcheck: # Check if MySQL is ready to accept connections
+    healthcheck:
       test:
         [
           "CMD",
@@ -98,87 +98,88 @@ services:
       timeout: 5s
       retries: 5
 
-  postgresql_db: # PostgreSQL database for Cart Service
-    image: postgres:14-alpine # Alpine variant for smaller image size
+  postgresql_db:
+    image: postgres:14-alpine
     ports:
-      - "5432:5432" # Optional: Expose for local PostgreSQL tools
+      - "5432:5432"
     environment:
       POSTGRES_USER: ${PG_USER}
       POSTGRES_PASSWORD: ${PG_PASSWORD}
       POSTGRES_DB: ${PG_DATABASE}
     volumes:
-      - postgresql_data:/var/lib/postgresql/data # Persistent data storage
+      - postgresql_data:/var/lib/postgresql/data
     networks:
       - app-network
-    healthcheck: # Check if PostgreSQL is ready
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"] # Uses shell command for readiness check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  redis_cache: # Redis for caching (Cart Service) and Rate Limiting (API Gateway)
-    image: redis:6-alpine # Alpine variant for smaller image size
+  redis_cache:
+    image: redis:6-alpine
     ports:
-      - "6379:6379" # Optional: Expose for local Redis tools
+      - "6379:6379"
     volumes:
-      - redis_data:/data # Persistent data storage
+      - redis_data:/data
     networks:
       - app-network
-    healthcheck: # Check if Redis is ready
+    healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  zookeeper: # Dependency for Kafka
-    image: "confluentinc/cp-zookeeper:7.5.0" # Confluent's image includes necessary Kafka tools
+  zookeeper:
+    image: "confluentinc/cp-zookeeper:7.5.0"
     ports:
-      - "2181:2181" # Expose client port (optional for internal communication)
+      - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     networks:
       - app-network
-    healthcheck: # Check if Zookeeper is ready
-      test: ["CMD-SHELL", "echo stat | nc localhost 2181"] # Simple check using netcat
+    healthcheck:
+      test: ["CMD-SHELL", "echo stat | nc localhost 2181"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  kafka: # Kafka Broker
+  kafka:
     image: "confluentinc/cp-kafka:7.5.0"
     ports:
-      - "9092:9092" # Standard client port for external connections
-      - "9093:9093" # Additional listener for internal/external access (optional)
+      - "9092:9092"
+      - "9093:9093"
     environment:
-      KAFKA_BROKER_ID: 1 # Unique ID per broker in a cluster
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181 # Connects to Zookeeper service
-      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://0.0.0.0:9093 # Internal and external listeners
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093 # How clients resolve brokers
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT # For inter-broker communication in a cluster
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # Important for single-broker setups to avoid errors
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     depends_on:
       zookeeper:
-        condition: service_healthy # Kafka depends on Zookeeper
+        condition: service_healthy
     networks:
       - app-network
-    healthcheck: # Check if Kafka broker is ready
-      test: [
+    healthcheck:
+      test:
+        [
           "CMD-SHELL",
           "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1",
-        ] # API versions check
-      interval: 10s
-      timeout: 5s
-      retries: 5
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 7
 
-volumes: # Define named volumes for persistent data
+volumes:
   mongodb_data:
   mysql_data:
   postgresql_data:
   redis_data:
 
-networks: # Define the custom bridge network
+networks:
   app-network:
     driver: bridge
