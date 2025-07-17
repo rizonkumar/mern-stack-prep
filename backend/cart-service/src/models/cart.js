@@ -11,7 +11,7 @@ const Cart = sequelize.define(
       allowNull: false,
     },
     userId: {
-      type: DataTypes.UUID,
+      type: DataTypes.STRING(255),
       allowNull: false,
       unique: true,
     },

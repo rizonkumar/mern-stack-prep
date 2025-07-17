@@ -1,6 +1,7 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const { connectDB } = require("./config/db");
+const cartRoutes = require("./routes/cartRoutes");
 const { notFound, errorHandler } = require("./middlewares/errorMiddleware");
 
 dotenv.config();
@@ -11,6 +12,8 @@ connectDB();
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use("/api/cart", cartRoutes);
 
 app.get("/", (req, res) => {
   res.send("Cart Service API is running...");
