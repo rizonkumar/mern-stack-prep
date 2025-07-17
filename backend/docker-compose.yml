@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   user-service:
     build: ./user-service
@@ -140,10 +138,12 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "echo stat | nc localhost 2181"]
+      # Use the Confluent-provided tool to check if Zookeeper is ready
+      test: ["CMD-SHELL", "cub zk-ready zookeeper:2181 30"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   kafka:
     image: "confluentinc/cp-kafka:7.5.0"
@@ -165,14 +165,12 @@ services:
     networks:
       - app-network
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1",
-        ]
+      # Use the Confluent-provided tool to check if Kafka is ready
+      test: ["CMD-SHELL", "cub kafka-ready -b kafka:9092 1 30"]
       interval: 15s
       timeout: 10s
-      retries: 7
+      retries: 5
+      start_period: 10s
 
 volumes:
   mongodb_data:
