@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   user-service:
     build: ./user-service
@@ -43,8 +45,6 @@ services:
       PG_PASSWORD: ${PG_PASSWORD}
       PG_DATABASE: ${PG_DATABASE}
       PG_DIALECT: postgres
-      REDIS_HOST: redis_cache
-      REDIS_PORT: ${REDIS_PORT}
       NODE_ENV: ${NODE_ENV}
       KAFKA_BROKERS: kafka:9092
     depends_on:
@@ -58,6 +58,33 @@ services:
       - app-network
     volumes:
       - ./cart-service:/app
+      - /app/node_modules
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "${API_GATEWAY_PORT}:3000"
+    environment:
+      USER_SERVICE_URL: http://user-service:3001
+      PRODUCT_SERVICE_URL: http://product-service:3002
+      CART_SERVICE_URL: http://cart-service:3003
+      REDIS_HOST: redis_cache
+      REDIS_PORT: ${REDIS_PORT}
+      NODE_ENV: ${NODE_ENV}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      user-service:
+        condition: service_healthy
+      product-service:
+        condition: service_healthy
+      cart-service:
+        condition: service_healthy
+      redis_cache:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - ./api-gateway:/app
       - /app/node_modules
 
   mongodb:
@@ -138,7 +165,6 @@ services:
     networks:
       - app-network
     healthcheck:
-      # Use the Confluent-provided tool to check if Zookeeper is ready
       test: ["CMD-SHELL", "cub zk-ready zookeeper:2181 30"]
       interval: 10s
       timeout: 5s
@@ -165,7 +191,6 @@ services:
     networks:
       - app-network
     healthcheck:
-      # Use the Confluent-provided tool to check if Kafka is ready
       test: ["CMD-SHELL", "cub kafka-ready -b kafka:9092 1 30"]
       interval: 15s
       timeout: 10s
