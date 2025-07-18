@@ -1,5 +1,8 @@
 const Product = require("../models/productModel");
 const CustomError = require("../utils/CustomError");
+const { sendMessage } = require("../utils/kafkaProducer");
+
+const PRODUCT_TOPIC = "product-events"; // Define our kafka topic name
 
 /**
  * Creates a new product.
@@ -18,6 +21,17 @@ const createProduct = async (productData) => {
   }
 
   const product = await Product.create(productData);
+
+  // Public event to Kafka: Product Created
+  await sendMessage(PRODUCT_TOPIC, [
+    {
+      key: product.id,
+      value: JSON.stringify({
+        eventType: "PRODUCT_CREATED",
+        data: product.toJSON(),
+      }),
+    },
+  ]);
 
   return product;
 };
@@ -78,6 +92,17 @@ const updateProduct = async (productId, updateData) => {
 
   const updatedProduct = await product.update(updateData);
 
+  // Publish event to Kafka: Product Updated
+  await sendMessage(PRODUCT_TOPIC, [
+    {
+      key: updatedProduct.id,
+      value: JSON.stringify({
+        eventType: "PRODUCT_UPDATED",
+        data: updatedProduct.toJSON(),
+      }),
+    },
+  ]);
+
   return updatedProduct;
 };
 
@@ -95,6 +120,16 @@ const deleteProduct = async (productId) => {
   }
 
   await product.destroy();
+
+  await sendMessage(PRODUCT_TOPIC, [
+    {
+      key: productId,
+      value: JSON.stringify({
+        eventType: "PRODUCT_DELETED",
+        data: { id: productId }, // only send the id of the product that was deleted
+      }),
+    },
+  ]);
   return { message: "Product deleted successfully" };
 };
 
