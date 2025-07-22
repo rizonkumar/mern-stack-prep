@@ -34,6 +34,12 @@ services:
         condition: service_healthy
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3002/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   cart-service:
     build: ./cart-service
@@ -47,6 +53,8 @@ services:
       PG_DIALECT: postgres
       NODE_ENV: ${NODE_ENV}
       KAFKA_BROKERS: kafka:9092
+      REDIS_HOST: redis_cache
+      REDIS_PORT: ${REDIS_PORT}
     depends_on:
       postgresql_db:
         condition: service_healthy
