@@ -1,16 +1,23 @@
 const express = require("express");
 const dotenv = require("dotenv");
-const { createProxyMiddleware } = require("http-proxy-middleware"); // For routing
-const rateLimit = require("express-rate-limit"); // For rate limiting
-const RedisStore = require("rate-limit-redis"); // Redis store for rate limiting
-const Redis = require("ioredis"); // Redis client
-const asyncHandler = require("express-async-handler"); // For async middleware
-const CustomError = require("./utils/CustomError"); // Custom error class
-const { notFound, errorHandler } = require("./middlewares/errorMiddleware.js"); // Error middlewares
+const { createProxyMiddleware } = require("http-proxy-middleware");
+const rateLimit = require("express-rate-limit");
+const RedisStore = require("rate-limit-redis");
+const Redis = require("ioredis");
+const asyncHandler = require("express-async-handler");
+const CustomError = require("./utils/CustomError");
+const { notFound, errorHandler } = require("./middlewares/errorMiddleware.js");
+const cors = require("cors");
 
 dotenv.config();
 
 const app = express();
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+  })
+);
 
 const redisClient = new Redis({
   host: process.env.REDIS_HOST,

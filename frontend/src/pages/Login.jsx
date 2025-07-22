@@ -1,17 +1,16 @@
-// frontend/src/pages/Login.jsx
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import apiClient from "../api/axiosConfig"; // Our Axios instance
+import apiClient from "../api/axiosConfig";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const navigate = useNavigate(); // For programmatic navigation
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Prevent default form submission
+    e.preventDefault();
     setLoading(true);
     setError("");
 
@@ -20,14 +19,14 @@ function Login() {
         email,
         password,
       });
-
-      // Assuming your backend returns { success: true, data: { token: "..." } }
+      console.log("Response:", response);
       const token = response.data.data.token;
-      localStorage.setItem("jwtToken", token); // Store token in local storage
+
+      localStorage.setItem("jwtToken", token);
 
       console.log("Login successful:", response.data.message);
-      navigate("/profile"); // Redirect to profile page on success
-      window.location.reload(); // Force a reload to update Header auth state
+      navigate("/profile");
+      window.location.reload();
     } catch (err) {
       console.error(
         "Login error:",
@@ -36,7 +35,6 @@ function Login() {
       setError(
         err.response?.data?.message || "Login failed. Please try again."
       );
-      // If backend sends specific validation errors, you might parse err.response.data.errors
     } finally {
       setLoading(false);
     }
